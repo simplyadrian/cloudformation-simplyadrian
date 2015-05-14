@@ -1,0 +1,2041 @@
+{
+	"AWSTemplateFormatVersion" : "2010-09-09",
+
+	"Description" : "simplyadrian multi-zone VPC",
+
+	"Mappings": {
+		"Security": {
+			"OpsCode": { "CIDR": "184.106.28.90/32" },
+			"Internet": { "CIDR": "0.0.0.0/0" },
+			"Internal": { "CIDR": "10.0.0.0/8" }
+		},
+		"ADServers": {
+			"us-east-1": { "AD1": "172.20.11.254", "AD2": "172.20.21.254" },
+			"us-west-2": { "AD1": "172.21.11.254", "AD2": "172.21.21.254" },
+			"us-west-1": { "AD1": "172.28.11.254", "AD2": "172.28.21.254" },
+			"Chicago": { "AD1": "10.15.0.108", "AD2": "10.15.0.109" },
+			"Sartell": { "AD1": "10.12.34.11", "AD2": "10.12.34.12" }
+		},
+		"OfficeVPNCIDR": {
+			"Sartell": { "Name": "SHO", "ExtCIDR": "66.191.164.112/28", "IntCIDR": "10.12.0.0/16", "FirewallIP": "66.191.64.126" },
+			"SanFrancisco": { "Name": "SFO", "ExtCIDR": "173.228.45.176/28", "IntCIDR": "10.30.0.0/16", "FirewallIP": "173.228.45.178" },
+			"Minneapolis": { "Name": "MSO", "ExtCIDR": "209.23.191.0/29", "IntCIDR": "10.25.0.0/16", "FirewallIP": "209.23.191.2" },
+			"Chicago": { "Name": "CHD", "ExtCIDR": "66.77.96.0/24", "IntCIDR": "10.15.0.0/16", "FirewallIP": "66.77.96.250" }
+		},
+		"VPC": {
+			"us-east-1": { "CIDR": "172.20.0.0/16", "AZ1": "us-east-1c", "AZ2": "us-east-1d", "AZ3": "us-east-1e", "KeyPair": "Administrator" },
+			"us-west-2": { "CIDR": "172.21.0.0/16", "AZ1": "us-west-2a", "AZ2": "us-west-2b", "AZ3": "us-west-2c", "KeyPair": "Administrator" },
+			"us-west-1": { "CIDR": "172.28.0.0/16", "AZ1": "us-west-1a", "AZ2": "us-west-1c", "AZ3": "us-west-1a", "KeyPair": "Administrator" }
+		},
+		"NATAmi": {
+			"us-east-1": { 
+				"AMI": "ami-4696212e", 
+				"NATExtIP1": "54.165.169.19/32", 
+				"NATExtIP2": "54.165.129.101/32",
+				"NATIntIP1": "172.20.1.254", 
+				"NATIntIP2": "172.20.2.254",
+				"HostName1": "PAE1CL-NAT01", 
+				"HostName2": "PAE1DL-NAT02", 
+				"VPN1": "54.68.202.207",
+				"VPN1CIDR": "172.21.0.0/16",
+				"VPN2": "54.68.218.231",
+				"VPN2CIDR": "172.21.0.0/16",
+				"VPN3": "54.183.194.247",
+				"VPN3CIDR": "172.28.0.0/16",
+				"VPN4": "54.183.209.229",
+				"VPN4CIDR": "172.28.0.0/16"
+			},
+			"us-west-2": { 
+				"AMI": "ami-45135175",
+				"NATExtIP1": "54.68.202.207/32",
+				"NATExtIP2": "54.68.218.231/32",
+				"NATIntIP1": "172.21.1.254", 
+				"NATIntIP2": "172.21.2.254",
+				"HostName1": "PAW2AL-NAT01",
+				"HostName2": "PAW2BL-NAT02",
+				"VPN1": "54.165.169.19",
+				"VPN1CIDR": "172.20.0.0/16",
+				"VPN2": "54.165.129.101",
+				"VPN2CIDR": "172.20.0.0/16",
+				"VPN3": "54.183.194.247",
+				"VPN3CIDR": "172.28.0.0/16",
+				"VPN4": "54.183.209.229",
+				"VPN4CIDR": "172.28.0.0/16"
+			},
+			"us-west-1": { 
+				"AMI": "ami-59bab21c",
+				"NATExtIP1": "54.183.194.247/32",
+				"NATExtIP2": "54.183.209.229/32",
+				"NATIntIP1": "172.28.1.254", 
+				"NATIntIP2": "172.28.2.254",
+				"HostName1": "PAW1AL-NAT01",
+				"HostName2": "PAW1CL-NAT02",
+				"VPN1": "54.165.169.19",
+				"VPN1CIDR": "172.20.0.0/16",
+				"VPN2": "54.165.129.101",
+				"VPN2CIDR": "172.20.0.0/16",
+				"VPN3": "54.68.202.207",
+				"VPN3CIDR": "172.21.0.0/16",
+				"VPN4": "54.68.218.231",
+				"VPN4CIDR": "172.21.0.0/16"
+			}
+		},
+		"VPCSubnets": {
+			"us-east-1": { 
+				"PubSN1": ["172.20.1.0/24", "DMZ1"],
+				"PubSN2": ["172.20.2.0/24", "DMZ2"],
+				"PubSN3": ["172.20.3.0/24", "DMZ3"],
+				"PrivSN1": ["172.20.11.0/24", "APP1"],
+				"PrivSN2": ["172.20.12.0/24", "DB1"],
+				"PrivSN3": ["172.20.13.0/24", "MISC1"],
+				"PrivSN4": ["172.20.14.0/24", "WWW1"],
+				"PrivSN5": ["172.20.21.0/24", "APP2"],
+				"PrivSN6": ["172.20.22.0/24", "DB2"],
+				"PrivSN7": ["172.20.23.0/24", "MISC2"],
+				"PrivSN8": ["172.20.24.0/24", "WWW2"],
+				"PrivSN9": ["172.20.31.0/24", "APP3"],
+				"PrivSN10": ["172.20.32.0/24", "DB3"],
+				"PrivSN11": ["172.20.15.0/24", "EMR1"],
+				"PrivSN12": ["172.20.25.0/24", "EMR2"],
+				"PrivSN13": ["172.20.16.0/24", "DEV1"],
+				"PrivSN14": ["172.20.26.0/24", "DEV2"],
+				"PrivSN15": ["172.20.36.0/24", "DEV3"]
+			},
+			"us-west-2": {
+				"PubSN1": ["172.21.1.0/24", "DMZ1"],
+				"PubSN2": ["172.21.2.0/24", "DMZ2"],
+				"PubSN3": ["172.21.3.0/24", "DMZ3"],
+				"PrivSN1": ["172.21.11.0/24", "APP1"],
+				"PrivSN2": ["172.21.12.0/24", "DB1"],
+				"PrivSN3": ["172.21.13.0/24", "MISC1"],
+				"PrivSN4": ["172.21.14.0/24", "WWW1"],
+				"PrivSN5": ["172.21.21.0/24", "APP2"],
+				"PrivSN6": ["172.21.22.0/24", "DB2"],
+				"PrivSN7": ["172.21.23.0/24", "MISC2"],
+				"PrivSN8": ["172.21.24.0/24", "WWW2"],
+				"PrivSN9": ["172.21.31.0/24", "APP3"],
+				"PrivSN10": ["172.21.32.0/24", "DB3"],
+				"PrivSN11": ["172.21.15.0/24", "EMR1"],
+				"PrivSN12": ["172.21.25.0/24", "EMR2"],
+				"PrivSN13": ["172.21.16.0/24", "DEV1"],
+				"PrivSN14": ["172.21.26.0/24", "DEV2"],
+				"PrivSN15": ["172.21.36.0/24", "DEV3"]
+			},
+			"us-west-1": {
+				"PubSN1": ["172.28.1.0/24", "DMZ1"],
+				"PubSN2": ["172.28.2.0/24", "DMZ2"],
+				"PubSN3": ["172.28.3.0/24", "DMZ3"],
+				"PrivSN1": ["172.28.11.0/24", "APP1"],
+				"PrivSN2": ["172.28.12.0/24", "DB1"],
+				"PrivSN3": ["172.28.13.0/24", "MISC1"],
+				"PrivSN4": ["172.28.14.0/24", "WWW1"],
+				"PrivSN5": ["172.28.21.0/24", "APP2"],
+				"PrivSN6": ["172.28.22.0/24", "DB2"],
+				"PrivSN7": ["172.28.23.0/24", "MISC2"],
+				"PrivSN8": ["172.28.24.0/24", "WWW2"],
+				"PrivSN9": ["172.28.31.0/24", "APP3"],
+				"PrivSN10": ["172.28.32.0/24", "DB3"],
+				"PrivSN11": ["172.28.15.0/24", "EMR1"],
+				"PrivSN12": ["172.28.25.0/24", "EMR2"],
+				"PrivSN13": ["172.28.16.0/24", "DEV1"],
+				"PrivSN14": ["172.28.26.0/24", "DEV2"],
+				"PrivSN15": ["172.28.36.0/24", "DEV3"]
+			}
+		}
+	},
+
+	"Outputs": {
+		"NATEip1": {
+			"Description": "AWS Elastic IP of the NAT instance 1",
+			"Value": { "Ref": "NATEip1" }
+		},
+		"NATEip2": {
+			"Description": "AWS Elastic IP of the NAT instance 2",
+			"Value": { "Ref": "NATEip2" }
+		}
+	},
+
+	"Parameters" : {
+		"Domain": {
+			"AllowedPattern" : "[a-zA-Z0-9]+\\..+",
+			"Default": "teamfreeze.com",
+			"Description": "Domain Name For DNS Default Search Path",
+			"Type": "String"
+		}, 
+		"NATInstanceType": {
+			"AllowedValues": [
+				"t2.micro",
+				"t2.small",
+				"t2.medium",
+				"m3.medium",
+				"m3.large",
+				"m3.xlarge",
+				"m3.2xlarge"
+			],
+			"ConstraintDescription": "Instance type must be of a valid EC2 type",
+			"Default": "t2.medium",
+			"Description": "EC2 instance type for NAT3 instances",
+			"Type": "String"
+		},
+		"NumberOfPings" : {
+			"Description" : "The number of times the health check will ping the alternate NAT Node",
+			"Type" : "String",
+			"Default" : "3"
+		},
+		"PingTimeout" : {
+			"Description" : "The number of seconds to wait for each ping response before determining that the ping has failed",
+			"Type" : "String",
+			"Default" : "1"
+		},
+		"WaitBetweenPings" : {
+			"Description" : "The number of seconds to wait between health checks",
+			"Type" : "String",
+			"Default" : "2"
+		},
+		"WaitForInstanceStop" : {
+			"Description" : "The number of seconds to wait for alternate NAT Node to stop before attempting to stop it again",
+			"Type" : "String",
+			"Default" : "60"
+		},
+		"WaitForInstanceStart" : {
+			"Description" : "The number of seconds to wait for alternate NAT Node to restart before resuming health checks again",
+			"Type" : "String",
+			"Default" : "300"
+		}
+	},
+
+	"Resources" : {
+		"NATRole": {
+			"Type": "AWS::IAM::Role",
+			"Properties": {
+				"AssumeRolePolicyDocument": {
+					"Statement": [ {
+						"Effect": "Allow",
+						"Principal": {
+							"Service": [ "ec2.amazonaws.com" ]
+						},
+						"Action": [ "sts:AssumeRole" ]
+					} ]
+				},
+				"Path": "/",
+				"Policies": [ {
+					"PolicyName": "NAT_Takeover",
+					"PolicyDocument": {
+						"Statement": [ {
+							"Effect": "Allow",
+							"Action": [
+								"ec2:DescribeInstances",
+								"ec2:DescribeRouteTables",
+								"ec2:CreateRoute",
+								"ec2:ReplaceRoute",
+								"ec2:StartInstances",
+								"ec2:StopInstances"
+							],
+							"Resource": "*"
+						} ]
+					}
+				} ]
+			}
+		},
+		"NATRoleProfile": {
+			"Type": "AWS::IAM::InstanceProfile",
+			"Properties": {
+				"Path": "/",
+				"Roles": [ {
+					"Ref": "NATRole"
+				} ]
+			}
+		},
+		"NATEip1": {
+			"DependsOn": [
+				"VPCGatewayAttachment1",
+				"VPCGatewayAttachment2"
+			],
+			"Properties": {
+				"Domain": "vpc"
+			},
+			"Type": "AWS::EC2::EIP"
+		},
+		"NATEip2": {
+			"DependsOn": [
+				"VPCGatewayAttachment1",
+				"VPCGatewayAttachment2"
+			],
+			"Properties": {
+				"Domain": "vpc"
+			},
+			"Type": "AWS::EC2::EIP"
+		},
+		"EIPAssociation1" : {
+			"Type": "AWS::EC2::EIPAssociation",
+			"Properties": {
+				"AllocationId": { "Fn::GetAtt" : [ "NATEip1", "AllocationId" ] },
+				"InstanceId": { "Ref" : "NATInstance1" }
+			},
+			"DependsOn" : "NATInstance1"
+		},
+		"EIPAssociation2" : {
+			"Type": "AWS::EC2::EIPAssociation",
+			"Properties": {
+				"AllocationId": { "Fn::GetAtt" : [ "NATEip2", "AllocationId" ] },
+				"InstanceId": { "Ref" : "NATInstance2" }
+			},
+			"DependsOn" : "NATInstance2"
+		},
+		"NATInstance1": {
+			"DependsOn": "InternetGateway",
+			"Metadata" : {
+				"Comment1" : "Create NAT #1"
+			},
+			"Properties": {
+				"DisableApiTermination": "FALSE",
+				"ImageId": { "Fn::FindInMap": [ "NATAmi", { "Ref": "AWS::Region" }, "AMI"]},
+				"InstanceType": { "Ref": "NATInstanceType" },
+				"KeyName": { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "KeyPair" ] },
+				"IamInstanceProfile" : { "Ref" : "NATRoleProfile" },
+				"Monitoring": "true",
+				"SecurityGroupIds": [ 
+					{ "Ref": "NATSecurityGroup" },
+					{ "Ref": "LinuxDomainMemberSG" }
+				],
+				"SourceDestCheck": "false",
+				"SubnetId": { "Ref": "PublicSubnet1" },
+				"Tags": [
+					{"Key" : "Name", "Value" : { "Fn::FindInMap": [ "NATAmi", { "Ref": "AWS::Region" }, "HostName1"]} },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Public" },
+					{"Key" : "Role", "Value" : "Public Subnet 1" }
+				],
+				"PrivateIpAddress": { "Fn::FindInMap": [ "NATAmi", { "Ref": "AWS::Region" }, "NATIntIP1"]},
+				"UserData"       : { "Fn::Base64" : { "Fn::Join" : ["", [
+					"#!/bin/bash -v\n",
+					"exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1\n",
+					"cd /root\n",
+					"yum upgrade -y --skip-broken\n",
+					"yum install wget unzip java-1.7.0-openjdk-devel openswan openswan-doc nano -y\n",
+					"if [ ! -d \"/opt/aws/ec2-api-tools\" ]; then\n",
+						"  yum install http://s3.amazonaws.com/ec2-downloads/ec2-ami-tools.noarch.rpm -y\n",
+						"  mkdir -p /opt/aws/ec2-api-tools\n",
+						"  wget https://s3.amazonaws.com/aws-cli/awscli-bundle.zip\n",
+						"  unzip awscli-bundle.zip\n",
+						"  ./awscli-bundle/install -i /opt/aws -b /usr/local/bin/aws\n",
+						"  complete -C '/opt/aws/bin/aws_completer' aws\n",
+						"  wget http://s3.amazonaws.com/ec2-downloads/ec2-api-tools.zip\n",
+						"  unzip ec2-api-tools.zip -d /opt/aws/\n",
+						"  echo \"export JAVA_HOME=/usr\" >> ~/.bash_profile\n",
+						"  ln -s /opt/aws/ec2-api-tools-*/bin/* /opt/aws/bin/\n",
+						"  ln -s /opt/aws/ec2-api-tools-*/* /opt/aws/ec2-api-tools/\n",
+						"  echo \"export EC2_HOME=/opt/aws/ec2-api-tools\" >> ~/.bash_profile\n",
+						"  rm -rf awscli-bundle* ec2-api-tools.zip\n",
+					"fi\n",
+					"export JAVA_HOME=/usr\n",
+					"export EC2_HOME=/opt/aws/ec2-api-tools\n",
+					"# Configure iptables\n",
+					"/sbin/iptables --flush\n",
+					"/sbin/iptables -t nat -A POSTROUTING -o eth0 -s 0.0.0.0/0 -j MASQUERADE\n",
+					"/sbin/iptables-save > /etc/sysconfig/iptables\n",
+					"# Configure ip forwarding and redirects\n",
+					"echo 1 > /proc/sys/net/ipv4/ip_forward\n",
+					"echo 0 > /proc/sys/net/ipv4/conf/eth0/send_redirects\n",
+					"echo 0 > /proc/sys/net/ipv4/conf/eth0/accept_redirects\n",
+					"mkdir -p /etc/sysctl.d/\n",
+					"cat <<EOF > /etc/sysctl.d/nat.conf\n",
+					"net.ipv4.ip_forward = 1\n",
+					"net.ipv4.conf.eth0.send_redirects = 0\n",
+					"net.ipv4.conf.eth0.accept_redirects = 0\n",
+					"net.ipv4.conf.all.accept_redirects = 0\n",
+					"net.ipv4.conf.all.send_redirects = 0\n",
+					"EOF\n",
+					"# Download nat_monitor.sh and configure\n",
+					"wget http://media.amazonwebservices.com/articles/nat_monitor_files/nat_monitor.sh | bash\n",
+					"NAT_ID=\n",
+					"# CloudFormation should have updated the PrivateRouteTable2 by now (due to yum update), however loop to make sure\n",
+					"while [ \"$NAT_ID\" == \"\" ]; do\n",
+					"  sleep 60\n",
+					"  NAT_ID=`/opt/aws/bin/ec2-describe-route-tables ", 
+					{ "Ref" : "PrivateRouteTable2" }, 
+					" -U https://ec2.", 
+					{ "Ref" : "AWS::Region" }, 
+					".amazonaws.com | grep 0.0.0.0/0 | awk '{print $2;}'`\n",
+					"  #echo `date` \"-- NAT_ID=$NAT_ID\" >> /tmp/test.log\n",
+					"done\n",
+					"# Update NAT_ID, NAT_RT_ID, and My_RT_ID\n",
+					"sed \"s/NAT_ID=/NAT_ID=$NAT_ID/g\" /root/nat_monitor.sh > /root/nat_monitor.tmp\n",
+					"sed \"s/NAT_RT_ID=/NAT_RT_ID=",
+					{ "Ref" : "PrivateRouteTable2" },
+					"/g\" /root/nat_monitor.tmp > /root/nat_monitor.sh\n",
+					"sed \"s/My_RT_ID=/My_RT_ID=",
+					{ "Ref" : "PrivateRouteTable1" },
+					"/g\" /root/nat_monitor.sh > /root/nat_monitor.tmp\n",
+					"sed \"s/EC2_URL=/EC2_URL=https:\\/\\/ec2.",
+					{ "Ref" : "AWS::Region" }, ".amazonaws.com",
+					"/g\" /root/nat_monitor.tmp > /root/nat_monitor.sh\n",
+					"sed \"s/Num_Pings=3/Num_Pings=",
+					{ "Ref" : "NumberOfPings" },
+					"/g\" /root/nat_monitor.sh > /root/nat_monitor.tmp\n",
+					"sed \"s/Ping_Timeout=1/Ping_Timeout=",
+					{ "Ref" : "PingTimeout" },
+					"/g\" /root/nat_monitor.tmp > /root/nat_monitor.sh\n",
+					"sed \"s/Wait_Between_Pings=2/Wait_Between_Pings=",
+					{ "Ref" : "WaitBetweenPings" },
+					"/g\" /root/nat_monitor.sh > /root/nat_monitor.tmp\n",
+					"sed \"s/Wait_for_Instance_Stop=60/Wait_for_Instance_Stop=",
+					{ "Ref" : "WaitForInstanceStop" },
+					"/g\" /root/nat_monitor.tmp > /root/nat_monitor.sh\n",
+					"sed \"s/Wait_for_Instance_Start=300/Wait_for_Instance_Start=",
+					{ "Ref" : "WaitForInstanceStart" },
+					"/g\" /root/nat_monitor.sh > /root/nat_monitor.tmp\n",
+					"mv /root/nat_monitor.tmp /root/nat_monitor.sh\n",
+					"chmod a+x /root/nat_monitor.sh\n",
+					"echo '@reboot /root/nat_monitor.sh > /tmp/nat_monitor.log' | crontab\n",
+					"/root/nat_monitor.sh > /tmp/nat_monitor.log &\n",
+					"echo \"include /etc/ipsec.d/*.conf\" >> /etc/ipsec.conf\n",
+					"cat <<EOF > /etc/ipsec.d/vpc1-vpc2.conf\n",
+						"conn vpc1-vpc2\n",
+						"        type=tunnel\n",
+						"        authby=secret\n",
+						"        left=%defaultroute\n",
+						"        leftid=",
+						{ "Ref": "NATEip1" },"\n",
+						"        leftnexthop=%defaultroute\n",
+						"        leftsubnet=",
+						{ "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] },"\n",
+						"        right=",
+						{ "Fn::FindInMap": [ "NATAmi", { "Ref": "AWS::Region" }, "VPN1"]},"\n",
+						"        rightsubnet=",
+						{ "Fn::FindInMap": [ "NATAmi", { "Ref": "AWS::Region" }, "VPN1CIDR"]},"\n",
+						"        pfs=yes\n",
+						"        auto=start\n",
+					"EOF\n",
+					"cat <<EOF > /etc/ipsec.d/vpc1-vpc3.conf\n",
+						"conn vpc1-vpc3\n",
+						"        type=tunnel\n",
+						"        authby=secret\n",
+						"        left=%defaultroute\n",
+						"        leftid=",
+						{ "Ref": "NATEip1" },"\n",
+						"        leftnexthop=%defaultroute\n",
+						"        leftsubnet=",
+						{ "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] },"\n",
+						"        right=",
+						{ "Fn::FindInMap": [ "NATAmi", { "Ref": "AWS::Region" }, "VPN3"]},"\n",
+						"        rightsubnet=",
+						{ "Fn::FindInMap": [ "NATAmi", { "Ref": "AWS::Region" }, "VPN3CIDR"]},"\n",
+						"        pfs=yes\n",
+						"        auto=start\n",
+					"EOF\n",
+					"cat <<EOF > /etc/ipsec.d/vpc1-vpc2.secrets\n",
+						{ "Ref": "NATEip1" }," ",
+						{ "Fn::FindInMap": [ "NATAmi", { "Ref": "AWS::Region" }, "VPN1"]},
+						": PSK \"sUy*7eMosB1nTZY7*2K\"\n",
+					"EOF\n",
+					"cat <<EOF > /etc/ipsec.d/vpc1-vpc3.secrets\n",
+						{ "Ref": "NATEip1" }," ",
+						{ "Fn::FindInMap": [ "NATAmi", { "Ref": "AWS::Region" }, "VPN3"]},
+						": PSK \"sUy*7eMosB1nTZY7*2K\"\n",
+					"EOF\n",
+					"service ipsec start\n",
+					"chkconfig ipsec on\n",
+					"mkdir -p /var/log/chef\n",
+					"mkdir -p /var/backups/chef\n",
+					"mkdir -p /var/run/chef\n",
+					"mkdir -p /var/cache/chef\n",
+					"mkdir -p /var/lib/chef\n",
+					"mkdir /etc/chef\n",
+					"cd /root/\n",
+					"curl -L https://www.opscode.com/chef/install.sh | bash\n",
+					"cat - >/etc/chef/bootstrap.json <<EOF\n",
+						"{\n",
+						"\"run_list\": [\"role[nat]\"], \"default_attributes\": { }, \"override_attributes\": { }\n",
+						"}\n",
+					"EOF\n",
+					"cat - >/etc/chef/client.rb <<EOF\n",
+						"log_level          :info\n",
+						"log_location       \"/var/log/chef/client.log\"\n",
+						"ssl_verify_mode    :verify_none\n",
+						"validation_client_name \"simplyadrian-validator\"\n",
+						"validation_key         \"/etc/chef/validation.pem\"\n",
+						"client_key               \"/etc/chef/client.pem\"\n",
+						"chef_server_url    \"https://api.opscode.com/organizations/simplyadrian\"\n",
+						"file_cache_path    \"/var/cache/chef\"\n",
+						"file_backup_path  \"/var/backups/chef\"\n",
+						"pid_file           \"/var/run/chef/client.pid\"\n",
+						"node_name       \"",
+						{ "Fn::FindInMap": [ "NATAmi", { "Ref": "AWS::Region" }, "HostName1"]}, "\"\n",
+						"Chef::Log::Formatter.show_time = true\n",
+						"encrypted_data_bag_secret \"/etc/chef/encrypted_data_bag_secret\"\n",
+					"EOF\n",
+					"cat - >/etc/chef/encrypted_data_bag_secret <<EOF\n",
+						"PrDpb0sSwoQLslM0CPj/6BZHNAGXaB7CdGKIJ3WEAgs5tUfCwjvv/4o3FT92UBy/oMAzdkjjRKAd/2t49DmpJjsEG9eOuREd7/cuHETA9gA2GS/YpVW/9kYLe8PgMY7WchWUDJSbksmQzwFKuLGgD0giv/O+5aohJ0xwt5xsUR4BnQ51BgB5oFgJszS9IN/Lm8HddJQmUlQrXwGNnyohuFSWIDV3s9//C3jV0EI4ZYZd5V4vr98FWkSSHhwshw6Jv1bPQ28aK0kFBiV8tC3EHwJhk/XhnyGCd77jLd5Xe6radY0lo0jeUZSDO7jnZ+kErF9smIPzBd9s3WOguhPjJHWKj14y9Pvgsst68e+QRe6QAP3lhH47ckr+aOcG3IafAjcZAGtS2FtWhMbYZOPbYMK8RnY6ChweXBNUZd8eriMPZTvAoK7qw3adgXX8vZ439tgfpgZkB/rrXOKRaP4APmzTtiLZtFVJ/T979vpzDpHuKTXv5O/RXo1suWSUfdnlDQ1I0D4DFeambOyQF5Huu8OCk8jcLhokPD4NQLsfZ2RUvMJYXohd/83O6vqow0FZR5yDeb6iLG59SNiAYuF2TuypTj+ODi9eu/I1Q2n/TmmYEHQ2s6cxEIM7gYylkcNQiXKIhjfIUar1r5sEnPupu9oMSTDCEOhbAlAdSKb8Udo=\n",
+					"EOF\n",
+					"cat - >/etc/chef/validation.pem <<EOF\n",
+						"-----BEGIN RSA PRIVATE KEY-----\n",
+						"MIIEpAIBAAKCAQEA0kdiEvj8TOT/lxVoUeQG/rnyYNOq/DrZzveYFbIlo6q5Jygn\n",
+						"YCaxtFjoStO144rDNZj1Bi+Bx62WgvsLCZseWktUBWqVh2C4RHtJC9U/taO7EHaC\n",
+						"+sxm9zphgJua40+3nybXMHBhmviA3V0BOk2ZlOehJvRwzCBqu9ED95hmcotHBKmv\n",
+						"En0CXoFGc3W7JE2bM0H5eCVi4JXcVBFyDtY3/mHaTM9uUbdm+94OHKkrLrXrpQsw\n",
+						"Wgr5zte647q2HEsrDN24K30Y446NKvFg4QTd4KNC5Zi3VDBZ+jk6K75egG+GyzNq\n",
+						"Mw8Nv/2L+8MQjfwJ2zbEKGxN7QzILOBQLmuMOQIDAQABAoIBAQCub6T+FCpIJ5eX\n",
+						"X5zgggcDfIGCrVSkVLWmqWIybUwoD1H1F6xCaRb1guOAX0v97Hivl6l7biF84ZWA\n",
+						"Jn0rhNCTGvYiYB6W5Tc3KAaamFZ3edGOgKF7J+EqqfWEWJEOjGzIy9GrTy7I/ej4\n",
+						"uVRxZzpGejgHNrPzwdiI4YUm+ffSgBKBfdwHjkjp9xXOQGhrj5xtd71Nys5/2N4T\n",
+						"8YSaAkBPw50QFy/AMagweBWEzrghffcW2HnVvrdgkzVX6RnW1C2WQTbqC6hru122\n",
+						"gfknlOP2veqKo0fikoCe0rBr+uyxPQ04t1nH/mBzOkh/YPBIiSAzd7bPfR9cm8ZS\n",
+						"iGIckou5AoGBAOku9KhABZQYVrAHCoS49bcnKEmHri6ZRzb8w89H/JTsfsgdNJP5\n",
+						"OtzglVn6DXOBjSAz4Qypiev13a0V1atXLeh4vHZBPhxcNdj4ZTc+hYeFJlAK71t0\n",
+						"soBFBB7p45fB1MkuBgpH6LMbA6n6WEojIV1d9DFpuQsRaS9Z/JC0fxtrAoGBAOba\n",
+						"r/ZTPfPfJ/YNr4ZpuSzZnI0iRmteZJIMw7POXIWhVkX0x/RtERxL0j+dphT3dtOc\n",
+						"3VNqxfLGcKkC5SgAsLXUbgsi0xh7sD5a4Bgl9UupILTFN+lRQUenFY+XIAVrEjOP\n",
+						"zS4ySj4ex9HkvjUnEZgUFYllnnaGQ0ABJVRWKWPrAoGBANMDZO7kkKfFppzAomoc\n",
+						"nm7RhomTuLH+jw1ZizCGajGyGcCpfSzy+qtqqHy15XpDIBymFd/JhD/9TE8XVTYq\n",
+						"PCcFKzawL66mWywvDBkEAP30JgmE+7l9TxL4YZQ//28TPqWXemvPSurZZWVqYH8m\n",
+						"b0j4fsRAce1sIg1xlzazv9plAoGAX9cahmE4ry5OINC9tkfeIMiXPeCk655ckmXK\n",
+						"ObPKpY+9iX1+JfPBzsWLm+2PLdUu99t/50nEtG2+B+yzxk/DDToMFYN3sAppuPlx\n",
+						"X5UiqS6l7WaTN8IMH/s18E8FdDpnbBCfVjZ6rB+LRZB5hweZPlHYPxp5FyvWb5QK\n",
+						"M2Ex/dECgYAPimOQH9X6HyHm/hY+1UgafGfBm1yQnUaXJubFMgFF2GemQ7omcJSR\n",
+						"0amIzMrotHFAdhXlNv2kkN99U84XMEMqN4O7FpJ/KaRg/9rpnPYVJiygBo6wgVON\n",
+						"4mp79JOpAadbak6332UQC9RJgT2FU8i6194J4SY3v+va51hwpJu/Cw==\n",
+						"-----END RSA PRIVATE KEY-----\n",
+					"EOF\n",
+					"/usr/bin/chef-client -j /etc/chef/bootstrap.json\n"
+				]]}}
+			},
+			"Type": "AWS::EC2::Instance"
+		},
+		"NATInstance2": {
+			"DependsOn": "InternetGateway",
+			"Metadata" : {
+				"Comment1" : "Create NAT #2"
+			},
+			"Properties": {
+				"DisableApiTermination": "FALSE",
+				"ImageId": { "Fn::FindInMap": [ "NATAmi", { "Ref": "AWS::Region" }, "AMI" ] },
+				"InstanceType": { "Ref": "NATInstanceType" },
+				"KeyName": { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "KeyPair" ] },
+				"IamInstanceProfile" : { "Ref" : "NATRoleProfile" },
+				"Monitoring": "true",
+				"SecurityGroupIds": [
+					{ "Ref": "NATSecurityGroup" },
+					{ "Ref": "LinuxDomainMemberSG" }
+				],
+				"SourceDestCheck": "false",
+				"SubnetId": { "Ref": "PublicSubnet2" },
+				"Tags": [
+					{"Key" : "Name", "Value" : { "Fn::FindInMap": [ "NATAmi", { "Ref": "AWS::Region" }, "HostName2"]} },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Public" },
+					{"Key" : "Role", "Value" : "Public Subnet 2" }
+				],
+				"PrivateIpAddress": { "Fn::FindInMap": [ "NATAmi", { "Ref": "AWS::Region" }, "NATIntIP2"]},
+				"UserData"       : { "Fn::Base64" : { "Fn::Join" : ["", [
+					"#!/bin/bash -v\n",
+					"exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1\n",
+					"cd /root\n",
+					"yum upgrade -y --skip-broken\n",
+					"yum install wget unzip java-1.7.0-openjdk-devel openswan openswan-doc nano -y\n",
+					"if [ ! -d \"/opt/aws/ec2-api-tools\" ]; then\n",
+						"  yum install http://s3.amazonaws.com/ec2-downloads/ec2-ami-tools.noarch.rpm -y\n",
+						"  mkdir -p /opt/aws/ec2-api-tools\n",
+						"  wget https://s3.amazonaws.com/aws-cli/awscli-bundle.zip\n",
+						"  unzip awscli-bundle.zip\n",
+						"  ./awscli-bundle/install -i /opt/aws -b /usr/local/bin/aws\n",
+						"  complete -C '/opt/aws/bin/aws_completer' aws\n",
+						"  wget http://s3.amazonaws.com/ec2-downloads/ec2-api-tools.zip\n",
+						"  unzip ec2-api-tools.zip -d /opt/aws/\n",
+						"  echo \"export JAVA_HOME=/usr\" >> ~/.bash_profile\n",
+						"  ln -s /opt/aws/ec2-api-tools-*/bin/* /opt/aws/bin/\n",
+						"  ln -s /opt/aws/ec2-api-tools-*/* /opt/aws/ec2-api-tools/\n",
+						"  export EC2_HOME=/opt/aws/ec2-api-tools\n",
+						"  echo \"export EC2_HOME=/opt/aws/ec2-api-tools\" >> ~/.bash_profile\n",
+						"  rm -rf awscli-bundle* ec2-api-tools.zip\n",
+					"fi\n",
+					"export JAVA_HOME=/usr\n",
+					"export EC2_HOME=/opt/aws/ec2-api-tools\n",
+					"# Configure iptables\n",
+					"/sbin/iptables --flush\n",
+					"/sbin/iptables -t nat -A POSTROUTING -o eth0 -s 0.0.0.0/0 -j MASQUERADE\n",
+					"/sbin/iptables-save > /etc/sysconfig/iptables\n",
+					"# Configure ip forwarding and redirects\n",
+					"echo 1 > /proc/sys/net/ipv4/ip_forward\n",
+					"echo 0 > /proc/sys/net/ipv4/conf/eth0/send_redirects\n",
+					"echo 0 > /proc/sys/net/ipv4/conf/eth0/accept_redirects\n",
+					"mkdir -p /etc/sysctl.d/\n",
+					"cat <<EOF > /etc/sysctl.d/nat.conf\n",
+					"net.ipv4.ip_forward = 1\n",
+					"net.ipv4.conf.eth0.send_redirects = 0\n",
+					"net.ipv4.conf.eth0.accept_redirects = 0\n",
+					"net.ipv4.conf.all.accept_redirects = 0\n",
+					"net.ipv4.conf.all.send_redirects = 0\n",
+					"EOF\n",
+					"# Download nat_monitor.sh and configure\n",
+					"wget http://media.amazonwebservices.com/articles/nat_monitor_files/nat_monitor.sh\n",
+					"# Update NAT_ID, NAT_RT_ID, and My_RT_ID\n",
+					"sed \"s/NAT_ID=/NAT_ID=",
+					{ "Ref" : "NATInstance1" },
+					"/g\" /root/nat_monitor.sh > /root/nat_monitor.tmp\n",
+					"sed \"s/NAT_RT_ID=/NAT_RT_ID=",
+					{ "Ref" : "PrivateRouteTable1" },
+					"/g\" /root/nat_monitor.tmp > /root/nat_monitor.sh\n",
+					"sed \"s/My_RT_ID=/My_RT_ID=",
+					{ "Ref" : "PrivateRouteTable2" },
+					"/g\" /root/nat_monitor.sh > /root/nat_monitor.tmp\n",
+					"sed \"s/EC2_URL=/EC2_URL=https:\\/\\/ec2.",
+					{ "Ref" : "AWS::Region" }, ".amazonaws.com",
+					"/g\" /root/nat_monitor.tmp > /root/nat_monitor.sh\n",
+					"sed \"s/Num_Pings=3/Num_Pings=",
+					{ "Ref" : "NumberOfPings" },
+					"/g\" /root/nat_monitor.sh > /root/nat_monitor.tmp\n",
+					"sed \"s/Ping_Timeout=1/Ping_Timeout=",
+					{ "Ref" : "PingTimeout" },
+					"/g\" /root/nat_monitor.tmp > /root/nat_monitor.sh\n",
+					"sed \"s/Wait_Between_Pings=2/Wait_Between_Pings=",
+					{ "Ref" : "WaitBetweenPings" },
+					"/g\" /root/nat_monitor.sh > /root/nat_monitor.tmp\n",
+					"sed \"s/Wait_for_Instance_Stop=60/Wait_for_Instance_Stop=",
+					{ "Ref" : "WaitForInstanceStop" },
+					"/g\" /root/nat_monitor.tmp > /root/nat_monitor.sh\n",
+					"sed \"s/Wait_for_Instance_Start=300/Wait_for_Instance_Start=",
+					{ "Ref" : "WaitForInstanceStart" },
+					"/g\" /root/nat_monitor.sh > /root/nat_monitor.tmp\n",
+					"mv /root/nat_monitor.tmp /root/nat_monitor.sh\n",
+					"chmod a+x /root/nat_monitor.sh\n",
+					"echo '@reboot /root/nat_monitor.sh > /tmp/nat_monitor.log' | crontab\n",
+					"/root/nat_monitor.sh >> /tmp/nat_monitor.log &\n",
+					"echo \"include /etc/ipsec.d/*.conf\" >> /etc/ipsec.conf\n",
+					"cat <<EOF > /etc/ipsec.d/vpc1-vpc2.conf\n",
+						"conn vpc1-vpc2\n",
+						"        type=tunnel\n",
+						"        authby=secret\n",
+						"        left=%defaultroute\n",
+						"        leftid=",
+						{ "Ref": "NATEip2" },"\n",
+						"        leftnexthop=%defaultroute\n",
+						"        leftsubnet=",
+						{ "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] },"\n",
+						"        right=",
+						{ "Fn::FindInMap": [ "NATAmi", { "Ref": "AWS::Region" }, "VPN2"]},"\n",
+						"        rightsubnet=",
+						{ "Fn::FindInMap": [ "NATAmi", { "Ref": "AWS::Region" }, "VPN2CIDR"]},"\n",
+						"        pfs=yes\n",
+						"        auto=start\n",
+					"EOF\n",
+					"cat <<EOF > /etc/ipsec.d/vpc1-vpc3.conf\n",
+						"conn vpc1-vpc3\n",
+						"        type=tunnel\n",
+						"        authby=secret\n",
+						"        left=%defaultroute\n",
+						"        leftid=",
+						{ "Ref": "NATEip2" },"\n",
+						"        leftnexthop=%defaultroute\n",
+						"        leftsubnet=",
+						{ "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] },"\n",
+						"        right=",
+						{ "Fn::FindInMap": [ "NATAmi", { "Ref": "AWS::Region" }, "VPN4"]},"\n",
+						"        rightsubnet=",
+						{ "Fn::FindInMap": [ "NATAmi", { "Ref": "AWS::Region" }, "VPN4CIDR"]},"\n",
+						"        pfs=yes\n",
+						"        auto=start\n",
+					"EOF\n",
+					"cat <<EOF > /etc/ipsec.d/vpc1-vpc2.secrets\n",
+						{ "Ref": "NATEip2" }," ",
+						{ "Fn::FindInMap": [ "NATAmi", { "Ref": "AWS::Region" }, "VPN2"]},
+						": PSK \"sUy*7eMosB1nTZY7*2K\"\n",
+					"EOF\n",
+					"cat <<EOF > /etc/ipsec.d/vpc1-vpc3.secrets\n",
+						{ "Ref": "NATEip2" }," ",
+						{ "Fn::FindInMap": [ "NATAmi", { "Ref": "AWS::Region" }, "VPN4"]},
+						": PSK \"sUy*7eMosB1nTZY7*2K\"\n",
+					"EOF\n",
+					"service ipsec start\n",
+					"chkconfig ipsec on\n",
+					"mkdir -p /var/log/chef\n",
+					"mkdir -p /var/backups/chef\n",
+					"mkdir -p /var/run/chef\n",
+					"mkdir -p /var/cache/chef\n",
+					"mkdir -p /var/lib/chef\n",
+					"mkdir /etc/chef\n",
+					"curl -L https://www.opscode.com/chef/install.sh | bash\n",
+					"cat - >/etc/chef/bootstrap.json <<EOF\n",
+						"{\n",
+						"\"run_list\": [\"role[nat]\"], \"default_attributes\": { }, \"override_attributes\": { }\n",
+						"}\n",
+					"EOF\n",
+					"cat - >/etc/chef/client.rb <<EOF\n",
+						"log_level          :info\n",
+						"log_location       \"/var/log/chef/client.log\"\n",
+						"ssl_verify_mode    :verify_none\n",
+						"validation_client_name \"simplyadrian-validator\"\n",
+						"validation_key         \"/etc/chef/validation.pem\"\n",
+						"client_key               \"/etc/chef/client.pem\"\n",
+						"chef_server_url    \"https://api.opscode.com/organizations/simplyadrian\"\n",
+						"file_cache_path    \"/var/cache/chef\"\n",
+						"file_backup_path  \"/var/backups/chef\"\n",
+						"pid_file           \"/var/run/chef/client.pid\"\n",
+						"node_name       \"",
+						{ "Fn::FindInMap": [ "NATAmi", { "Ref": "AWS::Region" }, "HostName2"]}, "\"\n",
+						"Chef::Log::Formatter.show_time = true\n",
+						"encrypted_data_bag_secret \"/etc/chef/encrypted_data_bag_secret\"\n",
+					"EOF\n",
+					"cat - >/etc/chef/encrypted_data_bag_secret <<EOF\n",
+						"PrDpb0sSwoQLslM0CPj/6BZHNAGXaB7CdGKIJ3WEAgs5tUfCwjvv/4o3FT92UBy/oMAzdkjjRKAd/2t49DmpJjsEG9eOuREd7/cuHETA9gA2GS/YpVW/9kYLe8PgMY7WchWUDJSbksmQzwFKuLGgD0giv/O+5aohJ0xwt5xsUR4BnQ51BgB5oFgJszS9IN/Lm8HddJQmUlQrXwGNnyohuFSWIDV3s9//C3jV0EI4ZYZd5V4vr98FWkSSHhwshw6Jv1bPQ28aK0kFBiV8tC3EHwJhk/XhnyGCd77jLd5Xe6radY0lo0jeUZSDO7jnZ+kErF9smIPzBd9s3WOguhPjJHWKj14y9Pvgsst68e+QRe6QAP3lhH47ckr+aOcG3IafAjcZAGtS2FtWhMbYZOPbYMK8RnY6ChweXBNUZd8eriMPZTvAoK7qw3adgXX8vZ439tgfpgZkB/rrXOKRaP4APmzTtiLZtFVJ/T979vpzDpHuKTXv5O/RXo1suWSUfdnlDQ1I0D4DFeambOyQF5Huu8OCk8jcLhokPD4NQLsfZ2RUvMJYXohd/83O6vqow0FZR5yDeb6iLG59SNiAYuF2TuypTj+ODi9eu/I1Q2n/TmmYEHQ2s6cxEIM7gYylkcNQiXKIhjfIUar1r5sEnPupu9oMSTDCEOhbAlAdSKb8Udo=\n",
+					"EOF\n",
+					"cat - >/etc/chef/validation.pem <<EOF\n",
+						"-----BEGIN RSA PRIVATE KEY-----\n",
+						"MIIEpAIBAAKCAQEA0kdiEvj8TOT/lxVoUeQG/rnyYNOq/DrZzveYFbIlo6q5Jygn\n",
+						"YCaxtFjoStO144rDNZj1Bi+Bx62WgvsLCZseWktUBWqVh2C4RHtJC9U/taO7EHaC\n",
+						"+sxm9zphgJua40+3nybXMHBhmviA3V0BOk2ZlOehJvRwzCBqu9ED95hmcotHBKmv\n",
+						"En0CXoFGc3W7JE2bM0H5eCVi4JXcVBFyDtY3/mHaTM9uUbdm+94OHKkrLrXrpQsw\n",
+						"Wgr5zte647q2HEsrDN24K30Y446NKvFg4QTd4KNC5Zi3VDBZ+jk6K75egG+GyzNq\n",
+						"Mw8Nv/2L+8MQjfwJ2zbEKGxN7QzILOBQLmuMOQIDAQABAoIBAQCub6T+FCpIJ5eX\n",
+						"X5zgggcDfIGCrVSkVLWmqWIybUwoD1H1F6xCaRb1guOAX0v97Hivl6l7biF84ZWA\n",
+						"Jn0rhNCTGvYiYB6W5Tc3KAaamFZ3edGOgKF7J+EqqfWEWJEOjGzIy9GrTy7I/ej4\n",
+						"uVRxZzpGejgHNrPzwdiI4YUm+ffSgBKBfdwHjkjp9xXOQGhrj5xtd71Nys5/2N4T\n",
+						"8YSaAkBPw50QFy/AMagweBWEzrghffcW2HnVvrdgkzVX6RnW1C2WQTbqC6hru122\n",
+						"gfknlOP2veqKo0fikoCe0rBr+uyxPQ04t1nH/mBzOkh/YPBIiSAzd7bPfR9cm8ZS\n",
+						"iGIckou5AoGBAOku9KhABZQYVrAHCoS49bcnKEmHri6ZRzb8w89H/JTsfsgdNJP5\n",
+						"OtzglVn6DXOBjSAz4Qypiev13a0V1atXLeh4vHZBPhxcNdj4ZTc+hYeFJlAK71t0\n",
+						"soBFBB7p45fB1MkuBgpH6LMbA6n6WEojIV1d9DFpuQsRaS9Z/JC0fxtrAoGBAOba\n",
+						"r/ZTPfPfJ/YNr4ZpuSzZnI0iRmteZJIMw7POXIWhVkX0x/RtERxL0j+dphT3dtOc\n",
+						"3VNqxfLGcKkC5SgAsLXUbgsi0xh7sD5a4Bgl9UupILTFN+lRQUenFY+XIAVrEjOP\n",
+						"zS4ySj4ex9HkvjUnEZgUFYllnnaGQ0ABJVRWKWPrAoGBANMDZO7kkKfFppzAomoc\n",
+						"nm7RhomTuLH+jw1ZizCGajGyGcCpfSzy+qtqqHy15XpDIBymFd/JhD/9TE8XVTYq\n",
+						"PCcFKzawL66mWywvDBkEAP30JgmE+7l9TxL4YZQ//28TPqWXemvPSurZZWVqYH8m\n",
+						"b0j4fsRAce1sIg1xlzazv9plAoGAX9cahmE4ry5OINC9tkfeIMiXPeCk655ckmXK\n",
+						"ObPKpY+9iX1+JfPBzsWLm+2PLdUu99t/50nEtG2+B+yzxk/DDToMFYN3sAppuPlx\n",
+						"X5UiqS6l7WaTN8IMH/s18E8FdDpnbBCfVjZ6rB+LRZB5hweZPlHYPxp5FyvWb5QK\n",
+						"M2Ex/dECgYAPimOQH9X6HyHm/hY+1UgafGfBm1yQnUaXJubFMgFF2GemQ7omcJSR\n",
+						"0amIzMrotHFAdhXlNv2kkN99U84XMEMqN4O7FpJ/KaRg/9rpnPYVJiygBo6wgVON\n",
+						"4mp79JOpAadbak6332UQC9RJgT2FU8i6194J4SY3v+va51hwpJu/Cw==\n",
+						"-----END RSA PRIVATE KEY-----\n",
+					"EOF\n",
+					"/usr/bin/chef-client -j /etc/chef/bootstrap.json\n"
+				]]}}
+			},
+			"Type": "AWS::EC2::Instance"
+		},
+		"VPC" : {
+			"Type" : "AWS::EC2::VPC",
+			"Properties" : {
+				"CidrBlock" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] },
+				"EnableDnsHostnames": true,
+				"Tags" : [
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Public" }
+				]
+			}
+		},
+		"PublicSubnet1" : {
+			"Type" : "AWS::EC2::Subnet",
+			"Properties" : {
+				"VpcId" : { "Ref" : "VPC" },
+				"CidrBlock" : { "Fn::Select" : [ "0", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PubSN1" ] } ] },
+				"AvailabilityZone": { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "AZ1" ] },
+				"Tags" : [
+					{"Key" : "Name", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PubSN1" ] } ] } },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Public" },
+					{"Key" : "Role", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PubSN1" ] } ] } }
+				]
+			}
+		},
+		"PublicSubnet2" : {
+			"Type" : "AWS::EC2::Subnet",
+			"Properties" : {
+				"VpcId" : { "Ref" : "VPC" },
+				"CidrBlock" : { "Fn::Select" : [ "0", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PubSN2" ] } ] },
+				"AvailabilityZone": { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "AZ2" ] },
+				"Tags" : [
+					{"Key" : "Name", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PubSN2" ] } ] } },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Public" },
+					{"Key" : "Role", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PubSN2" ] } ] } }
+				]
+			}
+		},
+		"PublicSubnet3" : {
+			"Type" : "AWS::EC2::Subnet",
+			"Properties" : {
+				"VpcId" : { "Ref" : "VPC" },
+				"CidrBlock" : { "Fn::Select" : [ "0", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PubSN3" ] } ] },
+				"AvailabilityZone": { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "AZ3" ] },
+				"Tags" : [
+					{"Key" : "Name", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PubSN3" ] } ] } },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Public" },
+					{"Key" : "Role", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PubSN3" ] } ] } }
+				]
+			}
+		},
+		"PrivateSubnet1" : {
+			"Type" : "AWS::EC2::Subnet",
+			"Properties" : {
+				"VpcId" : { "Ref" : "VPC" },
+				"CidrBlock" : { "Fn::Select" : [ "0", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN1" ] } ] },
+				"AvailabilityZone": { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "AZ1" ] },
+				"Tags" : [
+					{"Key" : "Name", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN1" ] } ] } },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Private" },
+					{"Key" : "Role", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN1" ] } ] } }
+				]
+			}
+		},
+		"PrivateSubnet2" : {
+			"Type" : "AWS::EC2::Subnet",
+			"Properties" : {
+				"VpcId" : { "Ref" : "VPC" },
+				"CidrBlock" : { "Fn::Select" : [ "0", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN2"  ] } ] },
+				"AvailabilityZone": { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "AZ1" ] },
+				"Tags" : [
+					{"Key" : "Name", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN2" ] } ] } },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Private" },
+					{"Key" : "Role", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN2" ] } ] } }
+				]
+			}
+		},
+		"PrivateSubnet3" : {
+			"Type" : "AWS::EC2::Subnet",
+			"Properties" : {
+				"VpcId" : { "Ref" : "VPC" },
+				"CidrBlock" : { "Fn::Select" : [ "0", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN3" ] } ] },
+				"AvailabilityZone": { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "AZ1" ] },
+				"Tags" : [
+					{"Key" : "Name", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN3" ] } ] } },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Private" },
+					{"Key" : "Role", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN3" ] } ] } }
+				]
+			}
+		},
+		"PrivateSubnet4" : {
+			"Type" : "AWS::EC2::Subnet",
+			"Properties" : {
+				"VpcId" : { "Ref" : "VPC" },
+				"CidrBlock" : { "Fn::Select" : [ "0", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN4" ] } ] },
+				"AvailabilityZone": { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "AZ1" ] },
+				"Tags" : [
+					{"Key" : "Name", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN4" ] } ] } },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Private" },
+					{"Key" : "Role", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN4" ] } ] } }
+				]
+			}
+		},
+		"PrivateSubnet5" : {
+			"Type" : "AWS::EC2::Subnet",
+			"Properties" : {
+				"VpcId" : { "Ref" : "VPC" },
+				"CidrBlock" : { "Fn::Select" : [ "0", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN5" ] } ] },
+				"AvailabilityZone": { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "AZ2" ] },
+				"Tags" : [
+					{"Key" : "Name", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN5" ] } ] } },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Private" },
+					{"Key" : "Role", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN5" ] } ] } }
+				]
+			}
+		},
+		"PrivateSubnet6" : {
+			"Type" : "AWS::EC2::Subnet",
+			"Properties" : {
+				"VpcId" : { "Ref" : "VPC" },
+				"CidrBlock" : { "Fn::Select" : [ "0", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN6" ] } ] },
+				"AvailabilityZone": { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "AZ2" ] },
+				"Tags" : [
+					{"Key" : "Name", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN6" ] } ] } },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Private" },
+					{"Key" : "Role", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN6" ] } ] } }
+				]
+			}
+		},
+		"PrivateSubnet7" : {
+			"Type" : "AWS::EC2::Subnet",
+			"Properties" : {
+				"VpcId" : { "Ref" : "VPC" },
+				"CidrBlock" : { "Fn::Select" : [ "0", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN7" ] } ] },
+				"AvailabilityZone": { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "AZ2" ] },
+				"Tags" : [
+					{"Key" : "Name", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN7" ] } ] } },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Private" },
+					{"Key" : "Role", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN7" ] } ] } }
+				]
+			}
+		},
+		"PrivateSubnet8" : {
+			"Type" : "AWS::EC2::Subnet",
+			"Properties" : {
+				"VpcId" : { "Ref" : "VPC" },
+				"CidrBlock" : { "Fn::Select" : [ "0", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN8" ] } ] },
+				"AvailabilityZone": { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "AZ2" ] },
+				"Tags" : [
+					{"Key" : "Name", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN8" ] } ] } },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Private" },
+					{"Key" : "Role", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN8" ] } ] } }
+				]
+			}
+		},
+		"PrivateSubnet9" : {
+			"Type" : "AWS::EC2::Subnet",
+			"Properties" : {
+				"VpcId" : { "Ref" : "VPC" },
+				"CidrBlock" : { "Fn::Select" : [ "0", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN9" ] } ] },
+				"AvailabilityZone": { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "AZ3" ] },
+				"Tags" : [
+					{"Key" : "Name", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN9" ] } ] } },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Private" },
+					{"Key" : "Role", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN9" ] } ] } }
+				]
+			}
+		},
+		"PrivateSubnet10" : {
+			"Type" : "AWS::EC2::Subnet",
+			"Properties" : {
+				"VpcId" : { "Ref" : "VPC" },
+				"CidrBlock" : { "Fn::Select" : [ "0", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN10" ] } ] },
+				"AvailabilityZone": { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "AZ3" ] },
+				"Tags" : [
+					{"Key" : "Name", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN10" ] } ] } },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Private" },
+					{"Key" : "Role", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN10" ] } ] } }
+				]
+			}
+		},
+		"PrivateSubnet11" : {
+			"Type" : "AWS::EC2::Subnet",
+			"Properties" : {
+				"VpcId" : { "Ref" : "VPC" },
+				"CidrBlock" : { "Fn::Select" : [ "0", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN11" ] } ] },
+				"AvailabilityZone": { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "AZ1" ] },
+				"Tags" : [
+					{"Key" : "Name", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN11" ] } ] } },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Private" },
+					{"Key" : "Role", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN11" ] } ] } }
+				]
+			}
+		},
+		"PrivateSubnet12" : {
+			"Type" : "AWS::EC2::Subnet",
+			"Properties" : {
+				"VpcId" : { "Ref" : "VPC" },
+				"CidrBlock" : { "Fn::Select" : [ "0", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN12" ] } ] },
+				"AvailabilityZone": { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "AZ2" ] },
+				"Tags" : [
+					{"Key" : "Name", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN12" ] } ] } },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Private" },
+					{"Key" : "Role", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN12" ] } ] } }
+				]
+			}
+		},
+		"PrivateSubnet13" : {
+			"Type" : "AWS::EC2::Subnet",
+			"Properties" : {
+				"VpcId" : { "Ref" : "VPC" },
+				"CidrBlock" : { "Fn::Select" : [ "0", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN13" ] } ] },
+				"AvailabilityZone": { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "AZ1" ] },
+				"Tags" : [
+					{"Key" : "Name", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN13" ] } ] } },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Private" },
+					{"Key" : "Role", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN13" ] } ] } }
+				]
+			}
+		},
+		"PrivateSubnet14" : {
+			"Type" : "AWS::EC2::Subnet",
+			"Properties" : {
+				"VpcId" : { "Ref" : "VPC" },
+				"CidrBlock" : { "Fn::Select" : [ "0", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN14" ] } ] },
+				"AvailabilityZone": { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "AZ2" ] },
+				"Tags" : [
+					{"Key" : "Name", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN14" ] } ] } },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Private" },
+					{"Key" : "Role", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN14" ] } ] } }
+				]
+			}
+		},
+		"PrivateSubnet15" : {
+			"Type" : "AWS::EC2::Subnet",
+			"Properties" : {
+				"VpcId" : { "Ref" : "VPC" },
+				"CidrBlock" : { "Fn::Select" : [ "0", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN15" ] } ] },
+				"AvailabilityZone": { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "AZ3" ] },
+				"Tags" : [
+					{"Key" : "Name", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN15" ] } ] } },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Private" },
+					{"Key" : "Role", "Value" : { "Fn::Select" : [ "1", { "Fn::FindInMap": [ "VPCSubnets", { "Ref": "AWS::Region" }, "PrivSN15" ] } ] } }
+				]
+			}
+		},
+		"InternetGateway" : {
+			"Type" : "AWS::EC2::InternetGateway",
+			"Properties" : {
+				"Tags" : [
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Public" }
+				]
+			}
+		},
+		"CustomerGateway1": {
+			"Type": "AWS::EC2::CustomerGateway",
+			"Properties": {
+				"Tags": [
+					{"Key" : "Name", "Value" : {"Fn::FindInMap": [ "OfficeVPNCIDR", "Chicago", "Name" ]} },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Public" }
+				],
+			"Type": "ipsec.1",
+			"IpAddress": {"Fn::FindInMap": [ "OfficeVPNCIDR", "Chicago", "FirewallIP" ]},
+			"BgpAsn": "65000"
+			}
+		},
+		"CustomerGateway2": {
+			"Type": "AWS::EC2::CustomerGateway",
+			"Properties": {
+				"Tags": [
+					{"Key" : "Name", "Value" : {"Fn::FindInMap": [ "OfficeVPNCIDR", "Sartell", "Name" ]} },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Public" }
+				],
+			"Type": "ipsec.1",
+			"IpAddress": {"Fn::FindInMap": [ "OfficeVPNCIDR", "Sartell", "FirewallIP" ]},
+			"BgpAsn": "65000"
+			}
+		},
+		"CustomerGateway3": {
+			"Type": "AWS::EC2::CustomerGateway",
+			"Properties": {
+				"Tags": [
+					{"Key" : "Name", "Value" : {"Fn::FindInMap": [ "OfficeVPNCIDR", "SanFrancisco", "Name" ]} },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Public" }
+				],
+				"Type": "ipsec.1",
+				"IpAddress": {"Fn::FindInMap": [ "OfficeVPNCIDR", "SanFrancisco", "FirewallIP" ]},
+				"BgpAsn": "65000"
+			}
+		},
+		"CustomerGateway4": {
+			"Type": "AWS::EC2::CustomerGateway",
+			"Properties": {
+				"Tags": [
+					{"Key" : "Name", "Value" : {"Fn::FindInMap": [ "OfficeVPNCIDR", "Minneapolis", "Name" ]} },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Public" }
+				],
+				"Type": "ipsec.1",
+				"IpAddress": {"Fn::FindInMap": [ "OfficeVPNCIDR", "Minneapolis", "FirewallIP" ]},
+				"BgpAsn": "65000"
+			}
+		},
+		"VPNGateway": {
+			"Type": "AWS::EC2::VPNGateway",
+			"Properties": {
+				"Type": "ipsec.1"
+			}
+		},
+		"DHCPOptions": {
+			"Type": "AWS::EC2::DHCPOptions",
+			"Properties": {
+				"NtpServers": [
+				{"Fn::FindInMap": [ "ADServers", { "Ref": "AWS::Region" }, "AD1" ]},
+				{"Fn::FindInMap": [ "ADServers", { "Ref": "AWS::Region" }, "AD2" ]},
+				{"Fn::FindInMap": [ "ADServers", "Sartell", "AD1" ]},
+				{"Fn::FindInMap": [ "ADServers", "Sartell", "AD2" ]}
+				],
+				"DomainName": { "Ref" : "Domain"},
+				"DomainNameServers": [
+					{"Fn::FindInMap": [ "ADServers", { "Ref": "AWS::Region" }, "AD1" ]},
+					{"Fn::FindInMap": [ "ADServers", { "Ref": "AWS::Region" }, "AD2" ]},
+					{"Fn::FindInMap": [ "ADServers", "Sartell", "AD1" ]},
+					{"Fn::FindInMap": [ "ADServers", "Sartell", "AD2" ]}
+				]
+			}
+		},
+		"VPCDHCPOptionsAssociation": { 
+			"Type" : "AWS::EC2::VPCDHCPOptionsAssociation",
+			"Properties" : {
+				"DhcpOptionsId" : { "Ref" : "DHCPOptions" },
+				"VpcId" : { "Ref" : "VPC" }
+			}
+		}, 
+		"VPNConnection1": {
+			"Type": "AWS::EC2::VPNConnection",
+			"Properties": {
+				"Tags": [
+					{"Key" : "Name", "Value" : {"Fn::FindInMap": [ "OfficeVPNCIDR", "Chicago", "Name" ]} },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Public" }
+				],
+				"Type": "ipsec.1",
+				"StaticRoutesOnly": "true",
+				"VpnGatewayId": { "Ref": "VPNGateway" },
+				"CustomerGatewayId": { "Ref": "CustomerGateway1" }
+			}
+		},
+		"VPNConnection2": {
+			"Type": "AWS::EC2::VPNConnection",
+			"Properties": {
+				"Tags": [
+					{"Key" : "Name", "Value" : {"Fn::FindInMap": [ "OfficeVPNCIDR", "Sartell", "Name" ]} },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Public" }
+				],
+				"Type": "ipsec.1",
+				"StaticRoutesOnly": "true",
+				"VpnGatewayId": { "Ref": "VPNGateway" },
+				"CustomerGatewayId": { "Ref": "CustomerGateway2" }
+			}
+		},
+		"VPNConnection3": {
+			"Type": "AWS::EC2::VPNConnection",
+			"Properties": {
+				"Tags": [
+					{"Key" : "Name", "Value" : {"Fn::FindInMap": [ "OfficeVPNCIDR", "SanFrancisco", "Name" ]} },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Public" }
+				],
+				"Type": "ipsec.1",
+				"StaticRoutesOnly": "true",
+				"VpnGatewayId": { "Ref": "VPNGateway" },
+				"CustomerGatewayId": { "Ref": "CustomerGateway3" }
+			}
+		},
+		"VPNConnection4": {
+			"Type": "AWS::EC2::VPNConnection",
+			"Properties": {
+				"Tags": [
+					{"Key" : "Name", "Value" : {"Fn::FindInMap": [ "OfficeVPNCIDR", "Minneapolis", "Name" ]} },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Public" }
+				],
+				"Type": "ipsec.1",
+				"StaticRoutesOnly": "true",
+				"VpnGatewayId": { "Ref": "VPNGateway" },
+				"CustomerGatewayId": { "Ref": "CustomerGateway4" }
+			}
+		},
+		"VPCGatewayAttachment1" : {
+			"Type" : "AWS::EC2::VPCGatewayAttachment",
+			"Properties" : {
+				"VpcId" : { "Ref" : "VPC" },
+				"InternetGatewayId" : { "Ref" : "InternetGateway" }
+			}
+		},
+		"VPCGatewayAttachment2" : {
+			"Type": "AWS::EC2::VPCGatewayAttachment",
+			"Properties": {
+				"VpcId": { "Ref": "VPC" },
+				"VpnGatewayId": { "Ref": "VPNGateway" }
+			}
+		},
+		"PublicRouteTable" : {
+			"Type" : "AWS::EC2::RouteTable",
+			"Properties" : {
+				"VpcId" : {"Ref" : "VPC"},
+				"Tags" : [
+					{"Key" : "Name", "Value" : "Public" },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "DMZ" }
+				]
+			}
+		},
+		"PrivateRouteTable1" : {
+			"Type" : "AWS::EC2::RouteTable",
+			"Properties" : {
+				"VpcId" : {"Ref" : "VPC"},
+				"Tags" : [
+					{"Key" : "Name", "Value" : "Private1" },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Internal" }
+				]
+			}
+		},
+		"PrivateRouteTable2" : {
+			"Type" : "AWS::EC2::RouteTable",
+			"Properties" : {
+				"VpcId" : {"Ref" : "VPC"},
+				"Tags" : [
+					{"Key" : "Name", "Value" : "Private2" },
+					{"Key" : "Application", "Value" : { "Ref" : "AWS::StackName"} },
+					{"Key" : "Network", "Value" : "Internal" }
+				]
+			}
+		},
+		"PublicRoute1" : {
+			"Type" : "AWS::EC2::Route",
+			"Properties" : {
+				"RouteTableId" : { "Ref" : "PublicRouteTable" },
+				"DestinationCidrBlock" : { "Fn::FindInMap": [ "Security", "Internet", "CIDR" ] },
+				"GatewayId" : { "Ref" : "InternetGateway" }
+			},
+			"DependsOn": "VPCGatewayAttachment1"
+		},
+		"PrivateRoute1" : {
+			"Type" : "AWS::EC2::Route",
+			"Properties" : {
+				"RouteTableId" : { "Ref" : "PrivateRouteTable1" },
+				"DestinationCidrBlock" : { "Fn::FindInMap": [ "Security", "Internet", "CIDR" ] },
+				"InstanceId": { "Ref" : "NATInstance1" }
+			}
+		},
+		"PrivateRoute2" : {
+			"Type" : "AWS::EC2::Route",
+			"Properties" : {
+				"RouteTableId" : { "Ref" : "PrivateRouteTable2" },
+				"DestinationCidrBlock" : { "Fn::FindInMap": [ "Security", "Internet", "CIDR" ] },
+				"InstanceId": { "Ref" : "NATInstance2" }
+			}
+		},
+		"VPNGatewayRoutePropagation1" : {
+			"Type" : "AWS::EC2::VPNGatewayRoutePropagation",
+			"DependsOn": [
+				"PublicRouteTable",
+				"PrivateRouteTable1",
+				"PrivateRouteTable2",
+				"VPNConnection1",
+				"VPNConnection2",
+				"VPNConnection3",
+				"VPNConnection4"
+			],
+			"Properties" : {
+				"RouteTableIds" : [
+					{"Ref" : "PublicRouteTable"},
+					{"Ref" : "PrivateRouteTable1"},
+					{"Ref" : "PrivateRouteTable2"}
+				],
+				"VpnGatewayId" : {"Ref" : "VPNGateway"}
+			}
+		},
+		"PublicSubnet1RouteTableAssociation" : {
+			"Type" : "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties" : {
+				"SubnetId" : { "Ref" : "PublicSubnet1" },
+				"RouteTableId" : { "Ref" : "PublicRouteTable" }
+			}
+		},
+		"PublicSubnet2RouteTableAssociation" : {
+			"Type" : "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties" : {
+				"SubnetId" : { "Ref" : "PublicSubnet2" },
+				"RouteTableId" : { "Ref" : "PublicRouteTable" }
+			}
+		},
+		"PublicSubnet3RouteTableAssociation" : {
+			"Type" : "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties" : {
+				"SubnetId" : { "Ref" : "PublicSubnet3" },
+				"RouteTableId" : { "Ref" : "PublicRouteTable" }
+			}
+		},
+		"PrivateSubnetRouteTableAssociation1" : {
+			"Type" : "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties" : {
+				"SubnetId" : { "Ref" : "PrivateSubnet1" },
+				"RouteTableId" : { "Ref" : "PrivateRouteTable1" }
+			}
+		},
+		"PrivateSubnetRouteTableAssociation2" : {
+			"Type" : "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties" : {
+				"SubnetId" : { "Ref" : "PrivateSubnet2" },
+				"RouteTableId" : { "Ref" : "PrivateRouteTable1" }
+			}
+		},
+		"PrivateSubnetRouteTableAssociation3" : {
+			"Type" : "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties" : {
+				"SubnetId" : { "Ref" : "PrivateSubnet3" },
+				"RouteTableId" : { "Ref" : "PrivateRouteTable1" }
+			}
+		},
+		"PrivateSubnetRouteTableAssociation4" : {
+			"Type" : "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties" : {
+				"SubnetId" : { "Ref" : "PrivateSubnet4" },
+				"RouteTableId" : { "Ref" : "PrivateRouteTable1" }
+			}
+		},
+		"PrivateSubnetRouteTableAssociation5" : {
+			"Type" : "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties" : {
+				"SubnetId" : { "Ref" : "PrivateSubnet5" },
+				"RouteTableId" : { "Ref" : "PrivateRouteTable2" }
+			}
+		},
+		"PrivateSubnetRouteTableAssociation6" : {
+			"Type" : "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties" : {
+				"SubnetId" : { "Ref" : "PrivateSubnet6" },
+				"RouteTableId" : { "Ref" : "PrivateRouteTable2" }
+			}
+		},
+		"PrivateSubnetRouteTableAssociation7" : {
+			"Type" : "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties" : {
+				"SubnetId" : { "Ref" : "PrivateSubnet7" },
+				"RouteTableId" : { "Ref" : "PrivateRouteTable2" }
+			}
+		},
+		"PrivateSubnetRouteTableAssociation8" : {
+			"Type" : "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties" : {
+				"SubnetId" : { "Ref" : "PrivateSubnet8" },
+				"RouteTableId" : { "Ref" : "PrivateRouteTable2" }
+			}
+		},
+		"PrivateSubnetRouteTableAssociation9" : {
+			"Type" : "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties" : {
+				"SubnetId" : { "Ref" : "PrivateSubnet9" },
+				"RouteTableId" : { "Ref" : "PrivateRouteTable1" }
+			}
+		},
+		"PrivateSubnetRouteTableAssociation10" : {
+			"Type" : "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties" : {
+				"SubnetId" : { "Ref" : "PrivateSubnet10" },
+				"RouteTableId" : { "Ref" : "PrivateRouteTable1" }
+			}
+		},
+		"PrivateSubnetRouteTableAssociation11" : {
+			"Type" : "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties" : {
+				"SubnetId" : { "Ref" : "PrivateSubnet11" },
+				"RouteTableId" : { "Ref" : "PublicRouteTable" }
+			}
+		},
+		"PrivateSubnetRouteTableAssociation12" : {
+			"Type" : "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties" : {
+				"SubnetId" : { "Ref" : "PrivateSubnet12" },
+				"RouteTableId" : { "Ref" : "PublicRouteTable" }
+			}
+		},
+		"PrivateSubnetRouteTableAssociation13" : {
+			"Type" : "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties" : {
+				"SubnetId" : { "Ref" : "PrivateSubnet13" },
+				"RouteTableId" : { "Ref" : "PrivateRouteTable1" }
+			}
+		},
+		"PrivateSubnetRouteTableAssociation14" : {
+			"Type" : "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties" : {
+				"SubnetId" : { "Ref" : "PrivateSubnet14" },
+				"RouteTableId" : { "Ref" : "PrivateRouteTable2" }
+			}
+		},
+		"PrivateSubnetRouteTableAssociation15" : {
+			"Type" : "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties" : {
+				"SubnetId" : { "Ref" : "PrivateSubnet15" },
+				"RouteTableId" : { "Ref" : "PrivateRouteTable2" }
+			}
+		},
+		"VPNConnectionRoute1": {
+			"Type": "AWS::EC2::VPNConnectionRoute",
+			"Properties": {
+				"VpnConnectionId": { "Ref": "VPNConnection1" },
+				"DestinationCidrBlock": {"Fn::FindInMap": [ "OfficeVPNCIDR", "Chicago", "IntCIDR" ]}
+			}
+		},
+		"VPNConnectionRoute2": {
+			"Type": "AWS::EC2::VPNConnectionRoute",
+			"Properties": {
+				"VpnConnectionId": { "Ref": "VPNConnection2" },
+				"DestinationCidrBlock": {"Fn::FindInMap": [ "OfficeVPNCIDR", "Sartell", "IntCIDR" ]}
+			}
+		},
+		"VPNConnectionRoute3": {
+			"Type": "AWS::EC2::VPNConnectionRoute",
+			"Properties": {
+				"VpnConnectionId": { "Ref": "VPNConnection3" },
+				"DestinationCidrBlock": {"Fn::FindInMap": [ "OfficeVPNCIDR", "SanFrancisco", "IntCIDR" ]}
+			}
+		},
+		"VPNConnectionRoute4": {
+			"Type": "AWS::EC2::VPNConnectionRoute",
+			"Properties": {
+				"VpnConnectionId": { "Ref": "VPNConnection4" },
+				"DestinationCidrBlock": {"Fn::FindInMap": [ "OfficeVPNCIDR", "Minneapolis", "IntCIDR" ]}
+			}
+		},
+		"NetworkAcl1": {
+			"Type": "AWS::EC2::NetworkAcl",
+			"Properties": {
+				"VpcId": { "Ref": "VPC" },
+				"Tags": [
+					{ "Key": "Name", "Value": "WWW" }
+				]
+			}
+		},
+		"NetworkAcl2": {
+			"Type": "AWS::EC2::NetworkAcl",
+			"Properties": {
+				"VpcId": { "Ref": "VPC" },
+				"Tags": [
+					{ "Key": "Name", "Value": "APPSRV" }
+				]
+			}
+		},
+		"NetworkAcl3": {
+			"Type": "AWS::EC2::NetworkAcl",
+			"Properties": {
+				"VpcId": { "Ref": "VPC" },
+				"Tags": [
+					{ "Key": "Name", "Value": "DB" }
+				]
+			}
+		},
+		"NetworkAcl4": {
+			"Type": "AWS::EC2::NetworkAcl",
+			"Properties": {
+				"VpcId": { "Ref": "VPC" },
+				"Tags": [
+					{ "Key": "Name", "Value": "MISC" }
+				]
+			}
+		},
+		"NetworkAcl5": {
+			"Type": "AWS::EC2::NetworkAcl",
+			"Properties": {
+				"VpcId": { "Ref": "VPC" },
+				"Tags": [
+					{ "Key": "Name", "Value": "DMZ" }
+				]
+			}
+		},
+		"NetworkAcl6": {
+			"Type": "AWS::EC2::NetworkAcl",
+			"Properties": {
+				"VpcId": { "Ref": "VPC" },
+				"Tags": [
+					{ "Key": "Name", "Value": "EMR" }
+				]
+			}
+		},
+		"NetworkAcl7": {
+			"Type": "AWS::EC2::NetworkAcl",
+			"Properties": {
+				"VpcId": { "Ref": "VPC" },
+				"Tags": [
+					{ "Key": "Name", "Value": "DEV" }
+				]
+			}
+		},
+		"NetworkAclEntry1": {
+			"Type": "AWS::EC2::NetworkAclEntry",
+			"Properties": {
+				"CidrBlock": { "Fn::FindInMap": [ "Security", "Internet", "CIDR" ] },
+				"Protocol": "-1",
+				"RuleAction": "allow",
+				"RuleNumber": "100",
+				"NetworkAclId": { "Ref": "NetworkAcl1" }
+			}
+		},
+		"NetworkAclEntry2": {
+			"Type": "AWS::EC2::NetworkAclEntry",
+			"Properties": {
+				"CidrBlock": { "Fn::FindInMap": [ "Security", "Internet", "CIDR" ] },
+				"Egress": true,
+				"Protocol": "-1",
+				"RuleAction": "allow",
+				"RuleNumber": "100",
+				"NetworkAclId": { "Ref": "NetworkAcl1" }
+			}
+		},
+		"NetworkAclEntry3": {
+			"Type": "AWS::EC2::NetworkAclEntry",
+			"Properties": {
+				"CidrBlock": { "Fn::FindInMap": [ "Security", "Internet", "CIDR" ] },
+				"Protocol": "-1",
+				"RuleAction": "allow",
+				"RuleNumber": "100",
+				"NetworkAclId": { "Ref": "NetworkAcl2" }
+			}
+		},
+		"NetworkAclEntry4": {
+			"Type": "AWS::EC2::NetworkAclEntry",
+			"Properties": {
+				"CidrBlock": { "Fn::FindInMap": [ "Security", "Internet", "CIDR" ] },
+				"Egress": true,
+				"Protocol": "-1",
+				"RuleAction": "allow",
+				"RuleNumber": "100",
+				"NetworkAclId": { "Ref": "NetworkAcl2" }
+			}
+		},
+		"NetworkAclEntry5": {
+			"Type": "AWS::EC2::NetworkAclEntry",
+			"Properties": {
+				"CidrBlock": { "Fn::FindInMap": [ "Security", "Internet", "CIDR" ] },
+				"Protocol": "-1",
+				"RuleAction": "allow",
+				"RuleNumber": "100",
+				"NetworkAclId": { "Ref": "NetworkAcl3" }
+			}
+		},
+		"NetworkAclEntry6": {
+			"Type": "AWS::EC2::NetworkAclEntry",
+			"Properties": {
+				"CidrBlock": { "Fn::FindInMap": [ "Security", "Internet", "CIDR" ] },
+				"Egress": true,
+				"Protocol": "-1",
+				"RuleAction": "allow",
+				"RuleNumber": "100",
+				"NetworkAclId": { "Ref": "NetworkAcl3" }
+			}
+		},
+		"NetworkAclEntry7": {
+			"Type": "AWS::EC2::NetworkAclEntry",
+			"Properties": {
+				"CidrBlock": { "Fn::FindInMap": [ "Security", "Internet", "CIDR" ] },
+				"Protocol": "-1",
+				"RuleAction": "allow",
+				"RuleNumber": "100",
+				"NetworkAclId": { "Ref": "NetworkAcl4" }
+			}
+		},
+		"NetworkAclEntry8": {
+			"Type": "AWS::EC2::NetworkAclEntry",
+			"Properties": {
+				"CidrBlock": { "Fn::FindInMap": [ "Security", "Internet", "CIDR" ] },
+				"Egress": true,
+				"Protocol": "-1",
+				"RuleAction": "allow",
+				"RuleNumber": "100",
+				"NetworkAclId": { "Ref": "NetworkAcl4" }
+			}
+		},
+		"NetworkAclEntry9": {
+			"Type": "AWS::EC2::NetworkAclEntry",
+			"Properties": {
+				"CidrBlock": { "Fn::FindInMap": [ "Security", "Internet", "CIDR" ] },
+				"Protocol": "-1",
+				"RuleAction": "allow",
+				"RuleNumber": "100",
+				"NetworkAclId": { "Ref": "NetworkAcl5" }
+			}
+		},
+		"NetworkAclEntry10": {
+			"Type": "AWS::EC2::NetworkAclEntry",
+			"Properties": {
+				"CidrBlock": { "Fn::FindInMap": [ "Security", "Internet", "CIDR" ] },
+				"Egress": true,
+				"Protocol": "-1",
+				"RuleAction": "allow",
+				"RuleNumber": "100",
+				"NetworkAclId": { "Ref": "NetworkAcl5" }
+			}
+		},
+		"NetworkAclEntry11": {
+			"Type": "AWS::EC2::NetworkAclEntry",
+			"Properties": {
+				"CidrBlock": { "Fn::FindInMap": [ "Security", "Internet", "CIDR" ] },
+				"Protocol": "-1",
+				"RuleAction": "allow",
+				"RuleNumber": "100",
+				"NetworkAclId": { "Ref": "NetworkAcl6" }
+			}
+		},
+		"NetworkAclEntry12": {
+			"Type": "AWS::EC2::NetworkAclEntry",
+			"Properties": {
+				"CidrBlock": { "Fn::FindInMap": [ "Security", "Internet", "CIDR" ] },
+				"Egress": true,
+				"Protocol": "-1",
+				"RuleAction": "allow",
+				"RuleNumber": "100",
+				"NetworkAclId": { "Ref": "NetworkAcl6" }
+			}
+		},
+		"NetworkAclEntry13": {
+			"Type": "AWS::EC2::NetworkAclEntry",
+			"Properties": {
+				"CidrBlock": { "Fn::FindInMap": [ "Security", "Internet", "CIDR" ] },
+				"Protocol": "-1",
+				"RuleAction": "allow",
+				"RuleNumber": "100",
+				"NetworkAclId": { "Ref": "NetworkAcl7" }
+			}
+		},
+		"NetworkAclEntry14": {
+			"Type": "AWS::EC2::NetworkAclEntry",
+			"Properties": {
+				"CidrBlock": { "Fn::FindInMap": [ "Security", "Internet", "CIDR" ] },
+				"Egress": true,
+				"Protocol": "-1",
+				"RuleAction": "allow",
+				"RuleNumber": "100",
+				"NetworkAclId": { "Ref": "NetworkAcl7" }
+			}
+		},
+		"SubnetNetworkAclAssociation1": {
+			"Type": "AWS::EC2::SubnetNetworkAclAssociation",
+			"Properties": {
+				"NetworkAclId": { "Ref": "NetworkAcl1" },
+				"SubnetId": { "Ref": "PrivateSubnet4" }
+			}
+		},
+		"SubnetNetworkAclAssociation2": {
+			"Type": "AWS::EC2::SubnetNetworkAclAssociation",
+			"Properties": {
+				"NetworkAclId": { "Ref": "NetworkAcl1" },
+				"SubnetId": { "Ref": "PrivateSubnet8" }
+			}
+		},
+		"SubnetNetworkAclAssociation3": {
+			"Type": "AWS::EC2::SubnetNetworkAclAssociation",
+			"Properties": {
+				"NetworkAclId": { "Ref": "NetworkAcl4" },
+				"SubnetId": { "Ref": "PrivateSubnet3" }
+			}
+		},
+		"SubnetNetworkAclAssociation4": {
+			"Type": "AWS::EC2::SubnetNetworkAclAssociation",
+			"Properties": {
+				"NetworkAclId": { "Ref": "NetworkAcl4" },
+				"SubnetId": { "Ref": "PrivateSubnet7" }
+			}
+		},
+		"SubnetNetworkAclAssociation5": {
+			"Type": "AWS::EC2::SubnetNetworkAclAssociation",
+			"Properties": {
+				"NetworkAclId": { "Ref": "NetworkAcl3" },
+				"SubnetId": { "Ref": "PrivateSubnet6" }
+			}
+		},
+		"SubnetNetworkAclAssociation6": {
+			"Type": "AWS::EC2::SubnetNetworkAclAssociation",
+			"Properties": {
+				"NetworkAclId": { "Ref": "NetworkAcl3" },
+				"SubnetId": { "Ref": "PrivateSubnet2" }
+			}
+		},
+		"SubnetNetworkAclAssociation7": {
+			"Type": "AWS::EC2::SubnetNetworkAclAssociation",
+			"Properties": {
+				"NetworkAclId": { "Ref": "NetworkAcl3" },
+				"SubnetId": { "Ref": "PrivateSubnet10" }
+			}
+		},
+		"SubnetNetworkAclAssociation8": {
+			"Type": "AWS::EC2::SubnetNetworkAclAssociation",
+			"Properties": {
+				"NetworkAclId": { "Ref": "NetworkAcl2" },
+				"SubnetId": { "Ref": "PrivateSubnet5" }
+			}
+		},
+		"SubnetNetworkAclAssociation9": {
+			"Type": "AWS::EC2::SubnetNetworkAclAssociation",
+			"Properties": {
+				"NetworkAclId": { "Ref": "NetworkAcl2" },
+				"SubnetId": { "Ref": "PrivateSubnet1" }
+			}
+		},
+		"SubnetNetworkAclAssociation10": {
+			"Type": "AWS::EC2::SubnetNetworkAclAssociation",
+			"Properties": {
+				"NetworkAclId": { "Ref": "NetworkAcl2" },
+				"SubnetId": { "Ref": "PrivateSubnet9" }
+			}
+		},
+		"SubnetNetworkAclAssociation11": {
+			"Type": "AWS::EC2::SubnetNetworkAclAssociation",
+			"Properties": {
+				"NetworkAclId": { "Ref": "NetworkAcl5" },
+				"SubnetId": { "Ref": "PublicSubnet1" }
+			}
+		},
+		"SubnetNetworkAclAssociation12": {
+			"Type": "AWS::EC2::SubnetNetworkAclAssociation",
+			"Properties": {
+				"NetworkAclId": { "Ref": "NetworkAcl5" },
+				"SubnetId": { "Ref": "PublicSubnet2" }
+			}
+		},
+		"SubnetNetworkAclAssociation13": {
+			"Type": "AWS::EC2::SubnetNetworkAclAssociation",
+			"Properties": {
+				"NetworkAclId": { "Ref": "NetworkAcl6" },
+				"SubnetId": { "Ref": "PrivateSubnet11" }
+			}
+		},
+		"SubnetNetworkAclAssociation14": {
+			"Type": "AWS::EC2::SubnetNetworkAclAssociation",
+			"Properties": {
+				"NetworkAclId": { "Ref": "NetworkAcl6" },
+				"SubnetId": { "Ref": "PrivateSubnet12" }
+			}
+		},
+		"SubnetNetworkAclAssociation15": {
+			"Type": "AWS::EC2::SubnetNetworkAclAssociation",
+			"Properties": {
+				"NetworkAclId": { "Ref": "NetworkAcl7" },
+				"SubnetId": { "Ref": "PrivateSubnet13" }
+			}
+		},
+		"SubnetNetworkAclAssociation16": {
+			"Type": "AWS::EC2::SubnetNetworkAclAssociation",
+			"Properties": {
+				"NetworkAclId": { "Ref": "NetworkAcl7" },
+				"SubnetId": { "Ref": "PrivateSubnet14" }
+			}
+		},
+		"SubnetNetworkAclAssociation17": {
+			"Type": "AWS::EC2::SubnetNetworkAclAssociation",
+			"Properties": {
+				"NetworkAclId": { "Ref": "NetworkAcl7" },
+				"SubnetId": { "Ref": "PrivateSubnet15" }
+			}
+		},
+		"SubnetNetworkAclAssociation18": {
+			"Type": "AWS::EC2::SubnetNetworkAclAssociation",
+			"Properties": {
+				"NetworkAclId": { "Ref": "NetworkAcl5" },
+				"SubnetId": { "Ref": "PublicSubnet3" }
+			}
+		},
+		"SNStopic": {
+			"Type": "AWS::SNS::Topic",
+			"Properties": {
+				"TopicName" : "ServerStatusCheck",
+				"DisplayName": "ServerStatusCheck",
+				"Subscription": [
+					{ "Endpoint": "sysengineers@simplyadrian.com", "Protocol": "email" }
+				]
+			}
+		},
+		"CloudWatchAlarm1": {
+			"Type": "AWS::CloudWatch::Alarm",
+			"Properties": {
+				"AlarmName" : { "Fn::FindInMap": [ "NATAmi", { "Ref": "AWS::Region" }, "HostName1"]},
+				"ActionsEnabled": "true",
+				"AlarmDescription": "Alert on Server Status Change",
+				"ComparisonOperator": "GreaterThanOrEqualToThreshold",
+				"EvaluationPeriods": "3",
+				"MetricName": "StatusCheckFailed",
+				"Namespace": "AWS/EC2",
+				"Period": "60",
+				"Statistic": "Maximum",
+				"Threshold": "1.0",
+				"AlarmActions": [
+					{ "Ref": "SNStopic" }
+				],
+				"OKActions": [
+					{ "Ref": "SNStopic" }
+				],
+				"Dimensions": [ 
+					{"Name": "InstanceId", "Value": { "Ref": "NATInstance1" } }
+				]
+			}
+		},
+		"CloudWatchAlarm2": {
+			"Type": "AWS::CloudWatch::Alarm",
+			"Properties": {
+				"AlarmName" : { "Fn::FindInMap": [ "NATAmi", { "Ref": "AWS::Region" }, "HostName2"]},
+				"ActionsEnabled": "true",
+				"AlarmDescription": "Alert on Server Status Change",
+				"ComparisonOperator": "GreaterThanOrEqualToThreshold",
+				"EvaluationPeriods": "3",
+				"MetricName": "StatusCheckFailed",
+				"Namespace": "AWS/EC2",
+				"Period": "60",
+				"Statistic": "Maximum",
+				"Threshold": "1.0",
+				"AlarmActions": [
+					{ "Ref": "SNStopic" }
+				],
+				"OKActions": [
+					{ "Ref": "SNStopic" }
+				],
+				"Dimensions": [ 
+					{"Name": "InstanceId", "Value": { "Ref": "NATInstance2" } }
+				]
+			}
+		},
+		"NATSecurityGroup" : {
+			"Type" : "AWS::EC2::SecurityGroup",
+			"Properties" : {
+				"GroupDescription" : "Rules for allowing access to HA Nodes",
+				"VpcId" : { "Ref" : "VPC" },
+				"Tags" : [ { "Key" : "Name", "Value" : "NAT" } 
+				],
+				"SecurityGroupIngress" : [
+					{ "IpProtocol" : "-1", "CidrIp" : { "Fn::FindInMap": [ "NATAmi", "us-east-1", "NATExtIP1" ] } },
+					{ "IpProtocol" : "-1", "CidrIp" : { "Fn::FindInMap": [ "NATAmi", "us-east-1", "NATExtIP2" ] } },
+					{ "IpProtocol" : "-1", "CidrIp" : { "Fn::FindInMap": [ "NATAmi", "us-west-2", "NATExtIP1" ] } },
+					{ "IpProtocol" : "-1", "CidrIp" : { "Fn::FindInMap": [ "NATAmi", "us-west-2", "NATExtIP2" ] } },
+					{ "IpProtocol" : "-1", "CidrIp" : { "Fn::FindInMap": [ "NATAmi", "us-west-1", "NATExtIP1" ] } },
+					{ "IpProtocol" : "-1", "CidrIp" : { "Fn::FindInMap": [ "NATAmi", "us-west-1", "NATExtIP2" ] } },
+					{ "IpProtocol": "-1", "CidrIp": { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "-1", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "-1", "SourceSecurityGroupId" : { "Ref": "WindowsDomainMemberSG"}  },
+					{ "IpProtocol" : "-1", "SourceSecurityGroupId" : { "Ref": "LinuxDomainMemberSG"}  }
+				],
+				"SecurityGroupEgress" : [
+					{ "IpProtocol": "-1", "CidrIp": { "Fn::FindInMap": [ "Security", "Internet", "CIDR" ] } }
+				]
+			}
+		},
+		"NATSecurityGroupIngress": {
+			"Type": "AWS::EC2::SecurityGroupIngress",
+			"Properties": {
+				"GroupId": { "Ref": "NATSecurityGroup" },
+				"IpProtocol": "-1",
+				"SourceSecurityGroupId": { "Ref": "NATSecurityGroup" }
+			}
+		},
+		"WindowsDomainMemberSG" : {
+			"Type" : "AWS::EC2::SecurityGroup",
+			"Properties" : {
+				"GroupDescription" : "Windows Domain Members",
+				"VpcId" : { "Ref" : "VPC" },
+				"Tags" : [
+					{ "Key" : "Name", "Value" : "Windows Domain Members VPC" }
+				],
+				"SecurityGroupIngress" : [
+					{ "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "CidrIp" : { "Fn::FindInMap": [ "Security", "OpsCode", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "993", "ToPort" : "993", "CidrIp" : { "Fn::FindInMap": [ "Security", "OpsCode", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "993", "ToPort" : "993", "CidrIp" : { "Fn::FindInMap": [ "Security", "OpsCode", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "443", "ToPort" : "443", "CidrIp" : { "Fn::FindInMap": [ "Security", "OpsCode", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "1433", "ToPort" : "1433", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "1433", "ToPort" : "1433", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "2383", "ToPort" : "2383", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "2383", "ToPort" : "2383", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "135", "ToPort" : "135", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "135", "ToPort" : "135", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "2535", "ToPort" : "2535", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "2535", "ToPort" : "2535", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "54", "ToPort" : "54", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "54", "ToPort" : "54", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "49152", "ToPort" : "65535", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "49152", "ToPort" : "65535", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "49152", "ToPort" : "65535", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "49152", "ToPort" : "65535", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "446", "ToPort" : "446", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "446", "ToPort" : "446", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "446", "ToPort" : "446", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "446", "ToPort" : "446", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "5985", "ToPort" : "5985", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "5985", "ToPort" : "5985", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "161", "ToPort" : "161", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "161", "ToPort" : "161", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "162", "ToPort" : "162", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "162", "ToPort" : "162", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "3389", "ToPort" : "3389", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "3389", "ToPort" : "3389", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol": "icmp", "FromPort": "-1", "ToPort": "-1", "CidrIp": { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "icmp", "FromPort": "-1", "ToPort": "-1", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } }
+				],
+				"SecurityGroupEgress": [
+					{ "IpProtocol": "-1", "CidrIp": { "Fn::FindInMap": [ "Security", "Internet", "CIDR" ] } }
+				]
+			}
+		},
+		"WindowsDomainMemberSGIngress": {
+			"Type": "AWS::EC2::SecurityGroupIngress",
+			"Properties": {
+				"GroupId": { "Ref": "WindowsDomainMemberSG" },
+				"IpProtocol": "-1",
+				"SourceSecurityGroupId": { "Ref": "WindowsDomainMemberSG" }
+			}
+		},
+		"LinuxDomainMemberSG" : {
+			"Type" : "AWS::EC2::SecurityGroup",
+			"Properties" : {
+				"GroupDescription" : "Linux Domain Members",
+				"VpcId" : { "Ref" : "VPC" },
+				"Tags" : [
+					{"Key" : "Name", "Value" : "Linux Domain Members VPC"}
+				],
+				"SecurityGroupIngress" : [
+					{ "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "CidrIp" : { "Fn::FindInMap": [ "Security", "OpsCode", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "8080", "ToPort" : "8080", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+                                        { "IpProtocol" : "tcp", "FromPort" : "8080", "ToPort" : "8080", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "443", "ToPort" : "443", "CidrIp" : { "Fn::FindInMap": [ "Security", "OpsCode", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "15672", "ToPort" : "15672", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "15672", "ToPort" : "15672", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "8090", "ToPort" : "8090", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internet", "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "161", "ToPort" : "161", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "161", "ToPort" : "161", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "162", "ToPort" : "162", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "162", "ToPort" : "162", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "2049", "ToPort" : "2049", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "2049", "ToPort" : "2049", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "2049", "ToPort" : "2049", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "2049", "ToPort" : "2049", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "111", "ToPort" : "111", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "111", "ToPort" : "111", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "111", "ToPort" : "111", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "111", "ToPort" : "111", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "1434", "ToPort" : "1434", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "1434", "ToPort" : "1434", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "1433", "ToPort" : "1433", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "1433", "ToPort" : "1433", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "7000", "ToPort" : "7000", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "7000", "ToPort" : "7000", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "7001", "ToPort" : "7001", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "7001", "ToPort" : "7001", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "7199", "ToPort" : "7199", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "7199", "ToPort" : "7199", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "9042", "ToPort" : "9042", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "9042", "ToPort" : "9042", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "9160", "ToPort" : "9160", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "9160", "ToPort" : "9160", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "61621", "ToPort" : "61621", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "61621", "ToPort" : "61621", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "1433", "ToPort" : "1433", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "1433", "ToPort" : "1433", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol": "icmp", "FromPort": "-1", "ToPort": "-1", "CidrIp": { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "icmp", "FromPort": "-1", "ToPort": "-1", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } }
+				],
+				"SecurityGroupEgress": [
+					{ "IpProtocol": "-1", "CidrIp": { "Fn::FindInMap": [ "Security", "Internet", "CIDR" ] } }
+				]
+			}
+		},
+		"LinuxDomainMemberSGIngress": {
+			"Type": "AWS::EC2::SecurityGroupIngress",
+			"Properties": {
+				"GroupId": { "Ref": "LinuxDomainMemberSG" },
+				"IpProtocol": "-1",
+				"SourceSecurityGroupId": { "Ref": "LinuxDomainMemberSG" }
+			}
+		},
+		"ADSG" : {
+			"Type" : "AWS::EC2::SecurityGroup",
+			"Properties" : {
+				"GroupDescription" : "Active Directory",
+				"VpcId" : { "Ref" : "VPC" },
+				"Tags" : [
+					{"Key" : "Name", "Value" : "AD VPC"}
+				],
+				"SecurityGroupIngress" : [
+					{ "IpProtocol" : "tcp", "FromPort" : "389", "ToPort" : "389", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "389", "ToPort" : "389", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "389", "ToPort" : "389", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "389", "ToPort" : "389", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "636", "ToPort" : "636", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "636", "ToPort" : "636", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "636", "ToPort" : "636", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "636", "ToPort" : "636", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "9389", "ToPort" : "9389", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "9389", "ToPort" : "9389", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "464", "ToPort" : "464", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "464", "ToPort" : "464", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "464", "ToPort" : "464", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "464", "ToPort" : "464", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "25", "ToPort" : "25", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "25", "ToPort" : "25", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "5722", "ToPort" : "5722", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "5722", "ToPort" : "5722", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "139", "ToPort" : "139", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "139", "ToPort" : "139", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "137", "ToPort" : "138", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "137", "ToPort" : "138", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "5355", "ToPort" : "5355", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "5355", "ToPort" : "5355", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "67", "ToPort" : "68", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "67", "ToPort" : "68", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "88", "ToPort" : "88", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "88", "ToPort" : "88", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "88", "ToPort" : "88", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "88", "ToPort" : "88", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "3268", "ToPort" : "3269", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "3268", "ToPort" : "3269", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "135", "ToPort" : "135", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "135", "ToPort" : "135", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "445", "ToPort" : "445", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "445", "ToPort" : "445", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "445", "ToPort" : "445", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "445", "ToPort" : "445", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "123", "ToPort" : "123", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "123", "ToPort" : "123", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "53", "ToPort" : "53", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "53", "ToPort" : "53", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "53", "ToPort" : "53", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "53", "ToPort" : "53", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "1645", "ToPort" : "1646", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "1645", "ToPort" : "1646", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "1812", "ToPort" : "1813", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "udp", "FromPort" : "1812", "ToPort" : "1813", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol": "icmp", "FromPort": "-1", "ToPort": "-1", "CidrIp": { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "icmp", "FromPort": "-1", "ToPort": "-1", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } }
+				],
+				"SecurityGroupEgress": [
+					{ "IpProtocol": "-1", "CidrIp": { "Fn::FindInMap": [ "Security", "Internet", "CIDR" ] } }
+				]
+			}
+		},
+		"ExtWebSG" : {
+			"Type" : "AWS::EC2::SecurityGroup",
+			"Properties" : {
+				"GroupDescription" : "External Web Access",
+				"VpcId" : { "Ref" : "VPC" },
+				"Tags" : [
+					{"Key" : "Name", "Value" : "ExtWEB Traffic VPC"}
+				],
+				"SecurityGroupIngress" : [
+					{ "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internet", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "443", "ToPort" : "443", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internet", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "5672", "ToPort" : "5672", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internet", "CIDR" ] } },
+					{ "IpProtocol": "icmp", "FromPort": "-1", "ToPort": "-1", "CidrIp": { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "icmp", "FromPort": "-1", "ToPort": "-1", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } }
+				],
+				"SecurityGroupEgress": [
+					{ "IpProtocol": "-1", "CidrIp": { "Fn::FindInMap": [ "Security", "Internet", "CIDR" ] } }
+				]
+			}
+		},
+		"ExtWebSGIngress": {
+			"Type": "AWS::EC2::SecurityGroupIngress",
+			"Properties": {
+				"GroupId": { "Ref": "ExtWebSG" },
+				"IpProtocol": "-1",
+				"SourceSecurityGroupId": { "Ref": "ExtWebSG" }
+			}
+		},
+		"IntWebSG" : {
+			"Type" : "AWS::EC2::SecurityGroup",
+			"Properties" : {
+				"GroupDescription" : "Internal Web Access",
+				"VpcId" : { "Ref" : "VPC" },
+				"Tags" : [
+					{"Key" : "Name", "Value" : "IntWEB Traffic VPC"}
+				],
+				"SecurityGroupIngress" : [
+					{ "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "443", "ToPort" : "443", "CidrIp" : { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "tcp", "FromPort" : "443", "ToPort" : "443", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } },
+					{ "IpProtocol": "icmp", "FromPort": "-1", "ToPort": "-1", "CidrIp": { "Fn::FindInMap": [ "VPC", { "Ref": "AWS::Region" }, "CIDR" ] } },
+					{ "IpProtocol" : "icmp", "FromPort": "-1", "ToPort": "-1", "CidrIp" : { "Fn::FindInMap": [ "Security", "Internal", "CIDR" ] } }
+				],
+				"SecurityGroupEgress": [
+					{ "IpProtocol": "-1", "CidrIp": { "Fn::FindInMap": [ "Security", "Internet", "CIDR" ] } }
+				]
+			}
+		},
+		"IntWebSGIngress": {
+			"Type": "AWS::EC2::SecurityGroupIngress",
+			"Properties": {
+				"GroupId": { "Ref": "IntWebSG" },
+				"IpProtocol": "-1",
+				"SourceSecurityGroupId": { "Ref": "IntWebSG" }
+			}
+		}
+	}
+}
